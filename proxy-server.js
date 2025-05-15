@@ -8,34 +8,30 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-
-// Serve static frontend files from "public"
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Proxy register route
-app.post('/register', async (req, res) => {
+// Generic proxy that forwards to FairPlay backend
+app.use('/proxy', async (req, res) => {
+  const targetUrl = 'https://api.uvwin2024.co' + req.url.replace('/proxy', '');
   try {
-    const { username, password, phone } = req.body;
-
-    const response = await axios.post('https://api.uvwin2024.co/account/v2/register', {
-      username,
-      password,
-      phone
-    }, {
+    const response = await axios({
+      method: req.method,
+      url: targetUrl,
       headers: {
-        'Content-Type': 'application/json'
-      }
+        ...req.headers,
+        origin: 'https://www.fairplay.live',
+        referer: 'https://www.fairplay.live'
+      },
+      data: req.body
     });
 
-    res.status(response.status).json(response.data);
+    res.status(response.status).send(response.data);
   } catch (error) {
     console.error('Proxy error:', error.message);
-    res.status(error.response?.status || 500).json({
-      error: error.response?.data || 'Unknown error from API'
-    });
+    res.status(error.response?.status || 500).send(error.response?.data || 'Proxy error');
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`✅ Proxy server running on port ${PORT}`);
 });
