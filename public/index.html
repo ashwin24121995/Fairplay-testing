@@ -82,13 +82,13 @@
     }
 
     async function checkUsername(username) {
-      const res = await fetch(`/proxy/account/v2/users/${username}/:exists`);
+      const res = await fetch(`/proxy/account/v2/users/${username}/exists`);
       const data = await res.json();
       return data.exists;
     }
 
     async function checkPhone(phone) {
-      const res = await fetch(`/proxy/account/v2/users/phones/${phone}/:exists`);
+      const res = await fetch(`/proxy/account/v2/users/phones/${phone}/exists`);
       const data = await res.json();
       return data.exists;
     }
@@ -139,6 +139,7 @@
       const exists = await checkPhone("91" + phone);
       if (exists) {
         document.getElementById("phoneError").style.display = "block";
+        showAlert("❌ Phone number already exists. Please use another.", "danger");
         return;
       } else {
         document.getElementById("phoneError").style.display = "none";
@@ -211,9 +212,19 @@
       const userExists = await checkUsername(username);
       if (userExists) {
         document.getElementById("usernameError").style.display = "block";
+        showAlert("❌ Username already exists. Please choose another.", "danger");
         return;
       } else {
         document.getElementById("usernameError").style.display = "none";
+      }
+
+      const phoneExists = await checkPhone("91" + phone);
+      if (phoneExists) {
+        document.getElementById("phoneError").style.display = "block";
+        showAlert("❌ Phone number already exists. Please use another.", "danger");
+        return;
+      } else {
+        document.getElementById("phoneError").style.display = "none";
       }
 
       const otpValid = await validateOTP(phone, otp);
@@ -224,7 +235,10 @@
 
       const result = await registerUser(username, password, phone, otp);
       if (result.ok) {
-        showAlert("✅ Registered successfully!", "success");
+        showAlert("✅ Registered successfully! Redirecting...", "success");
+        setTimeout(() => {
+          window.location.href = "login.html";
+        }, 2000);
       } else {
         showAlert("❌ Registration failed.", "danger");
         console.error(result.data);
