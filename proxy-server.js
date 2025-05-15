@@ -1,37 +1,26 @@
 const express = require('express');
-const cors = require('cors');
-const axios = require('axios');
-const path = require('path');
-
 const app = express();
-const PORT = process.env.PORT || 3000;
+const { createProxyMiddleware } = require('http-proxy-middleware');
+const PORT = process.env.PORT || 10000;
 
-app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
-// Proxy endpoint
-app.use('/proxy', async (req, res) => {
-  const targetURL = 'https://api.uvwin2024.co' + req.url.replace('/proxy', '');
-  try {
-    const response = await axios({
-      method: req.method,
-      url: targetURL,
-      headers: {
-        ...req.headers,
-        origin: 'https://www.fairplay.live',
-        referer: 'https://www.fairplay.live'
-      },
-      data: req.body || {} // empty for OTP call
-    });
-
-    res.status(response.status).send(response.data);
-  } catch (error) {
-    console.error('Proxy error:', error.response?.status, targetURL);
-    res.status(error.response?.status || 500).send(error.response?.data || 'Proxy error');
+app.use('/proxy', createProxyMiddleware({
+  target: 'https://api.uvwin2024.co',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/proxy': '', // strip /proxy from the start
+  },
+  onProxyReq: (proxyReq, req, res) => {
+    // Make sure empty POST bodies are allowed
+    if (!req.body || Object.keys(req.body).length === 0) {
+      proxyReq.setHeader('Content-Length', '0');
+    }
   }
-});
+}));
+
+app.use(express.static('public'));
 
 app.listen(PORT, () => {
-  console.log(`✅ Proxy running on port ${PORT}`);
+  console.log(`Proxy running on port ${PORT}`);
 });
