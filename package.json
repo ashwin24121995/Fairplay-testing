@@ -1,6 +1,7 @@
 {
   "name": "register-proxy",
   "version": "1.0.0",
+  "description": "Proxy server for Fairplay registration",
   "main": "proxy-server.js",
   "scripts": {
     "start": "node proxy-server.js"
