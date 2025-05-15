@@ -10,28 +10,28 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Generic proxy that forwards to FairPlay backend
+// Proxy endpoint
 app.use('/proxy', async (req, res) => {
-  const targetUrl = 'https://api.uvwin2024.co' + req.url.replace('/proxy', '');
+  const targetURL = 'https://api.uvwin2024.co' + req.url.replace('/proxy', '');
   try {
     const response = await axios({
       method: req.method,
-      url: targetUrl,
+      url: targetURL,
       headers: {
         ...req.headers,
         origin: 'https://www.fairplay.live',
         referer: 'https://www.fairplay.live'
       },
-      data: req.body
+      data: req.body || {} // empty for OTP call
     });
 
     res.status(response.status).send(response.data);
   } catch (error) {
-    console.error('Proxy error:', error.message);
+    console.error('Proxy error:', error.response?.status, targetURL);
     res.status(error.response?.status || 500).send(error.response?.data || 'Proxy error');
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Proxy server running on port ${PORT}`);
+  console.log(`✅ Proxy running on port ${PORT}`);
 });
