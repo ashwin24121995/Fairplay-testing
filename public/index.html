@@ -59,7 +59,9 @@
         <label>Enter OTP *</label>
         <input type="text" class="form-control" id="otp" placeholder="6-digit code" required />
         <div class="mt-2">
-          <button class="btn btn-sm btn-link text-warning p-0" id="resendBtn" type="button" onclick="handleResendOTP()" disabled>Resend OTP (<span id="timer">30</span>s)</button>
+          <button class="btn btn-sm btn-link text-warning p-0" id="resendBtn" type="button" onclick="handleResendOTP()" disabled>
+            Resend OTP (<span id="timer">30</span>s)
+          </button>
         </div>
       </div>
       <button type="submit" class="btn btn-orange w-100">SIGN UP</button>
@@ -68,180 +70,132 @@
   </div>
 
   <script>
-    function showAlert(message, type = "success") {
-      const alertBox = document.getElementById("alertBox");
-      alertBox.className = `alert alert-${type} mt-3 text-center`;
-      alertBox.textContent = message;
-      alertBox.classList.remove("d-none");
+    function showAlert(msg, type = 'success') {
+      const box = document.getElementById('alertBox');
+      box.className = `alert alert-${type} mt-3 text-center`;
+      box.textContent = msg;
+      box.classList.remove('d-none');
     }
-
     function hideAlert() {
-      const alertBox = document.getElementById("alertBox");
-      alertBox.classList.add("d-none");
-      alertBox.textContent = "";
+      const box = document.getElementById('alertBox');
+      box.classList.add('d-none');
+      box.textContent = '';
     }
 
-    async function checkUsername(username) {
-      const res = await fetch(`/proxy/account/v2/users/${username}/exists`);
-      const data = await res.json();
-      return data.exists;
-    }
-
-    async function checkPhone(phone) {
-      const res = await fetch(`/proxy/account/v2/users/phones/${phone}/exists`);
-      const data = await res.json();
-      return data.exists;
-    }
-
-    async function sendOTP(phone) {
-      const res = await fetch(`/proxy/account/v2/otp/?mobileNumber=91${phone}`, {
-        method: 'POST'
-      });
-      return res.ok;
-    }
-
-    async function validateOTP(phone, otp) {
-      const res = await fetch(`/proxy/account/v2/otp/validate?mobileNumber=91${phone}&otp=${otp}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-      return res.ok;
-    }
-
-    async function registerUser(username, password, phone, otp) {
-      const body = {
-        fullName: username,
-        username: username,
-        password: password,
-        phoneNumber: "91" + phone,
-        referralCode: null,
-        campaignCode: null,
-        otp: otp
-      };
-
-      const res = await fetch(`/proxy/account/v2/accounts/signup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-      });
-
-      const data = await res.json();
-      return { ok: res.ok, data };
+    // returns true if status===200 (exists), false if 404 (not exists)
+    async function checkExists(path) {
+      const res = await fetch(`/proxy${path}`);
+      return res.status === 200;
     }
 
     async function handleSendOTP() {
-      const phone = document.getElementById("phone").value.trim();
-      if (phone.length !== 10) return showAlert("Enter a valid 10-digit phone number", "danger");
+      hideAlert();
+      const phone = document.getElementById('phone').value.trim();
+      if (phone.length !== 10) return showAlert('Enter a valid 10-digit phone number', 'danger');
 
-      const exists = await checkPhone("91" + phone);
-      if (exists) {
-        document.getElementById("phoneError").style.display = "block";
-        showAlert("❌ Phone number already exists. Please use another.", "danger");
-        return;
-      } else {
-        document.getElementById("phoneError").style.display = "none";
+      // check phone
+      const phoneExists = await checkExists(`/account/v2/users/phones/${phone}`);
+      if (phoneExists) {
+        document.getElementById('phoneError').style.display = 'block';
+        return showAlert('❌ Phone number already exists. Please use another.', 'danger');
       }
+      document.getElementById('phoneError').style.display = 'none';
 
-      const success = await sendOTP(phone);
-      if (success) {
-        showAlert("✅ OTP sent successfully!", "success");
-        document.getElementById("otpGroup").style.display = "block";
+      // send OTP
+      const res = await fetch(`/proxy/account/v2/otp/?mobileNumber=91${phone}`, { method: 'POST' });
+      if (res.ok) {
+        showAlert('✅ OTP sent successfully!', 'success');
+        document.getElementById('otpGroup').style.display = 'block';
         startResendTimer();
       } else {
-        showAlert("❌ Failed to send OTP.", "danger");
+        showAlert('❌ Failed to send OTP.', 'danger');
       }
     }
 
     async function handleResendOTP() {
-      const phone = document.getElementById("phone").value.trim();
-      const success = await sendOTP(phone);
-      if (success) {
-        showAlert("✅ OTP resent!", "success");
+      hideAlert();
+      const phone = document.getElementById('phone').value.trim();
+      const res = await fetch(`/proxy/account/v2/otp/?mobileNumber=91${phone}`, { method: 'POST' });
+      if (res.ok) {
+        showAlert('✅ OTP resent!', 'success');
         startResendTimer();
       } else {
-        showAlert("❌ Failed to resend OTP.", "danger");
+        showAlert('❌ Failed to resend OTP.', 'danger');
       }
     }
 
-    let resendCountdown;
-    function startResendTimer(seconds = 30) {
-      const resendBtn = document.getElementById("resendBtn");
-      const timerEl = document.getElementById("timer");
-      resendBtn.disabled = true;
-      let timeLeft = seconds;
-      timerEl.innerText = timeLeft;
-
-      resendCountdown = setInterval(() => {
-        timeLeft--;
-        timerEl.innerText = timeLeft;
-        if (timeLeft <= 0) {
-          clearInterval(resendCountdown);
-          resendBtn.disabled = false;
-          timerEl.innerText = "";
-          resendBtn.innerHTML = "Resend OTP";
+    let countdown;
+    function startResendTimer(sec = 30) {
+      const btn = document.getElementById('resendBtn');
+      const timer = document.getElementById('timer');
+      btn.disabled = true;
+      let t = sec;
+      timer.textContent = t;
+      countdown = setInterval(() => {
+        t--;
+        timer.textContent = t;
+        if (t <= 0) {
+          clearInterval(countdown);
+          btn.disabled = false;
+          timer.textContent = '';
+          btn.textContent = 'Resend OTP';
         }
       }, 1000);
     }
 
-    document.getElementById("otp").addEventListener("input", async function () {
+    document.getElementById('otp').addEventListener('input', async function () {
+      hideAlert();
       const otp = this.value.trim();
-      const phone = document.getElementById("phone").value.trim();
-
+      const phone = document.getElementById('phone').value.trim();
       if (otp.length === 6) {
-        const isValid = await validateOTP(phone, otp);
-        if (isValid) {
-          showAlert("✅ OTP Verified!", "success");
-        } else {
-          showAlert("❌ OTP invalid.", "danger");
-        }
-      } else {
-        hideAlert();
+        const valid = await fetch(`/proxy/account/v2/otp/validate?mobileNumber=91${phone}&otp=${otp}`, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({})
+        });
+        showAlert(valid.ok ? '✅ OTP Verified!' : '❌ OTP invalid.', valid.ok ? 'success' : 'danger');
       }
     });
 
-    document.getElementById("signupForm").addEventListener("submit", async function (e) {
+    document.getElementById('signupForm').addEventListener('submit', async e => {
       e.preventDefault();
-      const username = document.getElementById("username").value.trim();
-      const password = document.getElementById("password").value.trim();
-      const phone = document.getElementById("phone").value.trim();
-      const otp = document.getElementById("otp").value.trim();
+      hideAlert();
 
-      const userExists = await checkUsername(username);
-      if (userExists) {
-        document.getElementById("usernameError").style.display = "block";
-        showAlert("❌ Username already exists. Please choose another.", "danger");
-        return;
-      } else {
-        document.getElementById("usernameError").style.display = "none";
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value.trim();
+      const ph = document.getElementById('phone').value.trim();
+      const o = document.getElementById('otp').value.trim();
+
+      // username exists?
+      if (await checkExists(`/account/v2/users/${u}`)) {
+        document.getElementById('usernameError').style.display = 'block';
+        return showAlert('❌ Username already exists. Choose another.', 'danger');
+      }
+      document.getElementById('usernameError').style.display = 'none';
+
+      // OTP validated?
+      const otpRes = await fetch(`/proxy/account/v2/otp/validate?mobileNumber=91${ph}&otp=${o}`, {
+        method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})
+      });
+      if (!otpRes.ok) {
+        return showAlert('❌ Invalid or expired OTP.', 'danger');
       }
 
-      const phoneExists = await checkPhone("91" + phone);
-      if (phoneExists) {
-        document.getElementById("phoneError").style.display = "block";
-        showAlert("❌ Phone number already exists. Please use another.", "danger");
-        return;
-      } else {
-        document.getElementById("phoneError").style.display = "none";
-      }
+      // register
+      const body = { fullName:u, username:u, password:p, phoneNumber:'91'+ph, referralCode:null, campaignCode:null, otp:o };
+      const reg = await fetch('/proxy/account/v2/accounts/signup', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
 
-      const otpValid = await validateOTP(phone, otp);
-      if (!otpValid) {
-        showAlert("❌ OTP invalid or expired.", "danger");
-        return;
-      }
-
-      const result = await registerUser(username, password, phone, otp);
-      if (result.ok) {
-        showAlert("✅ Registered successfully! Redirecting...", "success");
-        setTimeout(() => {
-          window.location.href = "login.html";
-        }, 2000);
+      if (reg.ok) {
+        showAlert('✅ Registered! Redirecting to login…', 'success');
+        setTimeout(()=>location.href='login.html', 1500);
       } else {
-        showAlert("❌ Registration failed.", "danger");
-        console.error(result.data);
+        const err = await reg.json().catch(()=>null);
+        console.error(err);
+        showAlert('❌ Registration failed.', 'danger');
       }
     });
   </script>
