@@ -3,21 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sign Up | Fairplay X</title>
+  <title>FairPlay | Register</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <style>
     body {
-      background: url('https://wallpaperaccess.com/full/231495.jpg') no-repeat center center fixed;
-      background-size: cover;
+      background: #111;
+      color: #fff;
       font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
     }
     .signup-card {
       background-color: #000;
-      color: #fff;
       padding: 2rem;
-      border: 1px solid orange;
       border-radius: 12px;
-      box-shadow: 0 0 20px rgba(255, 165, 0, 0.4);
+      box-shadow: 0 0 10px orange;
+      width: 100%;
+      max-width: 400px;
     }
     .btn-orange {
       background-color: orange;
@@ -27,88 +31,214 @@
     .btn-orange:hover {
       background-color: darkorange;
     }
-    .form-control {
-      background-color: #222;
-      color: #fff;
-      border: 1px solid #444;
-    }
-    .form-control::placeholder {
-      color: #aaa;
-    }
-    .footer {
-      font-size: 12px;
-      color: #ccc;
-      text-align: center;
-      margin-top: 20px;
-    }
-    a {
-      color: orange;
-    }
   </style>
 </head>
 <body>
-  <div class="d-flex justify-content-center align-items-center vh-100">
-    <div class="signup-card col-md-4">
-      <h3 class="text-center">Sign Up</h3>
-      <p class="text-center">Create your account to start playing fantasy sports.</p>
-      <form id="registerForm">
-        <div class="mb-3">
-          <label for="username" class="form-label">Username *</label>
-          <input type="text" class="form-control" id="username" placeholder="Enter username" required />
+  <div class="signup-card">
+    <h3 class="text-center mb-4">Create Account</h3>
+    <form id="signupForm">
+      <div class="mb-3">
+        <label>Username *</label>
+        <input type="text" class="form-control" id="username" required />
+        <small class="text-danger" id="usernameError" style="display:none;">Username already exists</small>
+      </div>
+      <div class="mb-3">
+        <label>Password *</label>
+        <input type="password" class="form-control" id="password" required />
+      </div>
+      <div class="mb-3">
+        <label>Phone Number *</label>
+        <div class="input-group">
+          <span class="input-group-text">+91</span>
+          <input type="tel" class="form-control" id="phone" required />
+          <button class="btn btn-orange" type="button" onclick="handleSendOTP()">Send OTP</button>
         </div>
-        <div class="mb-3">
-          <label for="password" class="form-label">Password *</label>
-          <input type="password" class="form-control" id="password" placeholder="Enter password" required />
+        <small class="text-danger" id="phoneError" style="display:none;">Phone number already exists</small>
+      </div>
+      <div class="mb-3" id="otpGroup" style="display:none;">
+        <label>Enter OTP *</label>
+        <input type="text" class="form-control" id="otp" placeholder="6-digit code" required />
+        <div class="mt-2">
+          <button class="btn btn-sm btn-link text-warning p-0" id="resendBtn" type="button" onclick="handleResendOTP()" disabled>Resend OTP (<span id="timer">30</span>s)</button>
         </div>
-        <div class="mb-3 d-flex align-items-center">
-          <input type="tel" class="form-control me-2" id="phone" placeholder="+91 Phone Number" required />
-          <button type="button" class="btn btn-sm btn-orange">Send OTP</button>
-        </div>
-        <div class="text-center mb-3">
-          <small>Have an account? <a href="#">Sign in</a></small>
-        </div>
-        <button type="submit" class="btn btn-orange w-100">SIGN UP</button>
-      </form>
-      <div id="responseMsg" class="text-center mt-3"></div>
-    </div>
-  </div>
-
-  <div class="footer container">
-    <p>
-      Disclaimer: Fantasy sports is a skill-based game. Only users aged 18+ are allowed. Please play responsibly.
-      <br />
-      <a href="#">Terms and Conditions</a> | <a href="#">Privacy Policy</a>
-    </p>
+      </div>
+      <button type="submit" class="btn btn-orange w-100">SIGN UP</button>
+    </form>
+    <div id="alertBox" class="alert d-none mt-3 text-center" role="alert"></div>
   </div>
 
   <script>
-    document.getElementById('registerForm').addEventListener('submit', function (e) {
-      e.preventDefault();
+    function showAlert(message, type = "success") {
+      const alertBox = document.getElementById("alertBox");
+      alertBox.className = `alert alert-${type} mt-3 text-center`;
+      alertBox.textContent = message;
+      alertBox.classList.remove("d-none");
+    }
 
-      const data = {
-        username: document.getElementById('username').value,
-        password: document.getElementById('password').value,
-        phone: document.getElementById('phone').value
+    function hideAlert() {
+      const alertBox = document.getElementById("alertBox");
+      alertBox.classList.add("d-none");
+      alertBox.textContent = "";
+    }
+
+    async function checkUsername(username) {
+      const res = await fetch(`https://api.uvwin2024.co/account/v2/users/${username}/:exists`);
+      const data = await res.json();
+      return data.exists;
+    }
+
+    async function checkPhone(phone) {
+      const res = await fetch(`https://api.uvwin2024.co/account/v2/users/phones/${phone}/:exists`);
+      const data = await res.json();
+      return data.exists;
+    }
+
+    async function sendOTP(phone) {
+      const res = await fetch(`https://api.uvwin2024.co/account/v2/otp/?mobileNumber=91${phone}`, {
+        method: 'POST',
+        headers: {
+          'Origin': 'https://www.fairplay.live',
+          'Referer': 'https://www.fairplay.live'
+        }
+      });
+      return res.ok;
+    }
+
+    async function validateOTP(phone, otp) {
+      const res = await fetch(`https://api.uvwin2024.co/account/v2/otp/validate?mobileNumber=91${phone}&otp=${otp}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json;charset=utf-8',
+          'Origin': 'https://www.fairplay.live',
+          'Referer': 'https://www.fairplay.live'
+        },
+        body: JSON.stringify({})
+      });
+      return res.ok;
+    }
+
+    async function registerUser(username, password, phone, otp) {
+      const body = {
+        fullName: username,
+        username: username,
+        password: password,
+        phoneNumber: "91" + phone,
+        referralCode: null,
+        campaignCode: null,
+        otp: otp
       };
 
-      fetch("/register", {
-        method: "POST",
+      const res = await fetch(`https://api.uvwin2024.co/account/v2/accounts/signup`, {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json"
+          'Content-Type': 'application/json;charset=utf-8',
+          'Origin': 'https://www.fairplay.live',
+          'Referer': 'https://www.fairplay.live'
         },
-        body: JSON.stringify(data)
-      })
-      .then(response => response.json())
-      .then(result => {
-        document.getElementById('responseMsg').innerHTML =
-          '<span class="text-success">✅ Registration successful!</span>';
-        console.log(result);
-      })
-      .catch(error => {
-        document.getElementById('responseMsg').innerHTML =
-          '<span class="text-danger">❌ Registration failed. Try again.</span>';
-        console.error('Error:', error);
+        body: JSON.stringify(body)
       });
+
+      const data = await res.json();
+      return { ok: res.ok, data };
+    }
+
+    async function handleSendOTP() {
+      const phone = document.getElementById("phone").value.trim();
+      if (phone.length !== 10) return showAlert("Enter a valid 10-digit phone number", "danger");
+
+      const exists = await checkPhone("91" + phone);
+      if (exists) {
+        document.getElementById("phoneError").style.display = "block";
+        return;
+      } else {
+        document.getElementById("phoneError").style.display = "none";
+      }
+
+      const success = await sendOTP(phone);
+      if (success) {
+        showAlert("✅ OTP sent successfully!", "success");
+        document.getElementById("otpGroup").style.display = "block";
+        startResendTimer();
+      } else {
+        showAlert("❌ Failed to send OTP.", "danger");
+      }
+    }
+
+    async function handleResendOTP() {
+      const phone = document.getElementById("phone").value.trim();
+      const success = await sendOTP(phone);
+      if (success) {
+        showAlert("✅ OTP resent!", "success");
+        startResendTimer();
+      } else {
+        showAlert("❌ Failed to resend OTP.", "danger");
+      }
+    }
+
+    let resendCountdown;
+    function startResendTimer(seconds = 30) {
+      const resendBtn = document.getElementById("resendBtn");
+      const timerEl = document.getElementById("timer");
+      resendBtn.disabled = true;
+      let timeLeft = seconds;
+      timerEl.innerText = timeLeft;
+
+      resendCountdown = setInterval(() => {
+        timeLeft--;
+        timerEl.innerText = timeLeft;
+        if (timeLeft <= 0) {
+          clearInterval(resendCountdown);
+          resendBtn.disabled = false;
+          timerEl.innerText = "";
+          resendBtn.innerHTML = "Resend OTP";
+        }
+      }, 1000);
+    }
+
+    document.getElementById("otp").addEventListener("input", async function () {
+      const otp = this.value.trim();
+      const phone = document.getElementById("phone").value.trim();
+
+      if (otp.length === 6) {
+        const isValid = await validateOTP(phone, otp);
+        if (isValid) {
+          showAlert("✅ OTP Verified!", "success");
+        } else {
+          showAlert("❌ OTP invalid.", "danger");
+        }
+      } else {
+        hideAlert();
+      }
+    });
+
+    document.getElementById("signupForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const otp = document.getElementById("otp").value.trim();
+
+      const userExists = await checkUsername(username);
+      if (userExists) {
+        document.getElementById("usernameError").style.display = "block";
+        return;
+      } else {
+        document.getElementById("usernameError").style.display = "none";
+      }
+
+      const otpValid = await validateOTP(phone, otp);
+      if (!otpValid) {
+        showAlert("❌ OTP invalid or expired.", "danger");
+        return;
+      }
+
+      const result = await registerUser(username, password, phone, otp);
+      if (result.ok) {
+        showAlert("✅ Registered successfully!", "success");
+      } else {
+        showAlert("❌ Registration failed.", "danger");
+        console.error(result.data);
+      }
     });
   </script>
 </body>
