@@ -82,13 +82,13 @@
     }
 
     async function checkUsername(username) {
-      const res = await fetch(`/proxy/account/v2/users/${username}/exists`);
+      const res = await fetch(`/proxy/account/v2/users/${username}/:exists`);
       const data = await res.json();
       return data.exists;
     }
 
     async function checkPhone(phone) {
-      const res = await fetch(`/proxy/account/v2/users/phones/${phone}/exists`);
+      const res = await fetch(`/proxy/account/v2/users/phones/${phone}/:exists`);
       const data = await res.json();
       return data.exists;
     }
